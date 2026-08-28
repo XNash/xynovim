@@ -1,3 +1,5 @@
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/343cb4e0-1b08-4b11-b861-b4339141728e" />
+
 # xyno-neovim
 
 A minimal, from-scratch Neovim config — inspired by [ThePrimeagen's init.lua](https://github.com/ThePrimeagen/init.lua)
@@ -164,3 +166,4 @@ Configured with `provider = ClaudeCodeProvider`, `model = "claude-sonnet-5"`, an
 | `<leader>9P` | Provider picker (capital — `<leader>9p` is intentionally left free) |
 
 See [CHANGELOG.md](./CHANGELOG.md) for what's changed since the initial commit.
+

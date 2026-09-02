@@ -2,7 +2,53 @@
 
 All notable changes to this config are documented here.
 
-## [Unreleased]
+## [1.0.0] — 2026-09-02
+
+### Changed
+- **Migrated the whole config from the from-scratch Windows setup to a
+  LazyVim-based config on Linux (Omarchy/Arch).** This is a platform lineage
+  switch, not an incremental edit — the previous tree (everything under
+  `lua/config/plugins/`, the nvim-cmp/mason wiring in `lsp.lua`, and the
+  Windows-specific `bootstrap-device.ps1`) is replaced by the LazyVim starter
+  (v8) layout with custom specs under `lua/plugins/`. The old Windows config
+  remains untouched on the `master` branch.
+- **Rust tooling: hand-rolled `lsp.lua` → LazyVim's `lang.rust` extra**
+  (rustaceanvim + rust-analyzer + crates.nvim + codelldb via Mason), plus a new
+  `lua/plugins/rustaceanvim.lua` override: clippy (`--no-deps`) as the on-save
+  check command, native push diagnostics with style lints, inlay hints (closure
+  return types, elided lifetimes), fill-arguments completion snippets, full
+  function signatures, and module-grouped auto-imports.
+- **99 (`ninety-nine.lua`): same settings, different source.** Provider
+  (`ClaudeCodeProvider`), model (`claude-sonnet-5`), `--effort medium`, and all
+  five keymaps (`9s`/`9vv`/`9x`/`9m`/`9P`) are identical to the Windows config,
+  but the plugin now loads from GitHub (`ThePrimeagen/99` with a telescope
+  dependency) instead of a local `~/personal/99` clone, which doesn't exist on
+  this machine. Keymaps gained `desc` labels for which-key.
+- `auto-save.lua` carried over intact (okuuva fork, `noautocmd` +
+  `TextChangedI` triggers, and the `vim.cmd` proxy that re-sends
+  `textDocument/didSave` after autosaves), now living at `lua/plugins/`.
+- `harpoon` carried over as a normal GitHub-sourced spec.
+- `README.md` replaced by the LazyVim starter README; `LICENSE` (Apache-2.0,
+  from the starter), `lazyvim.json` (extras: `neo-tree`, `lang.rust`),
+  `.neoconf.json`, and `stylua.toml` added.
+
+### Added
+- Omarchy desktop integration: `omarchy-theme-hotreload.lua` (live theme
+  switching), `all-themes.lua`, `plugin/after/transparency.lua`, and
+  `lua/config/remote_clipboard.lua`.
+- `disable-news-alert.lua` and `snacks-animated-scrolling-off.lua` LazyVim
+  tweaks.
+
+### Removed
+- Config no longer provides its own `islands-dark` colorscheme, `lualine`,
+  `conform`, `telescope`, `treesitter`, `autopairs`, `toggleterm`, `lightbulb`,
+  or `misc` specs — LazyVim ships equivalents (or Omarchy theming supersedes
+  them, in the colorscheme's case).
+- `flutter-tools.lua` and the PowerShell/ESLint LSP wiring — this machine's
+  config is currently scoped to Rust.
+- `bootstrap-device.ps1` and the OneDrive junction workflow (Windows-only).
+
+## [Unreleased — Windows lineage, superseded by 1.0.0 on this branch]
 
 ### Changed
 - **`setup-onedrive-link.ps1` replaced by `bootstrap-device.ps1` — a full autonomous

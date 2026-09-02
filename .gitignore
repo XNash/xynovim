@@ -1,4 +1,8 @@
-*.swp
-*.swo
-.DS_Store
-tmp/
+tt.*
+.tests
+doc/tags
+debug
+.repro
+foo.*
+*.log
+data

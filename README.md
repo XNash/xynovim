@@ -1,4 +1,4 @@
-# xyno-neovim
+# xynovim (formerly xyno-neovim)
 
 Personal Neovim config, built on [LazyVim](https://github.com/LazyVim/LazyVim), running on Linux (Omarchy/Arch). The previous from-scratch Windows config lives on the [`windows-legacy`](../../tree/windows-legacy) branch.
 

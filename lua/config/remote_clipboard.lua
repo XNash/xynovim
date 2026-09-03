@@ -41,11 +41,15 @@ local function ancestor_process_named(name)
 end
 
 function M.setup()
-  local in_tmux = vim.env.TMUX ~= nil
-  local in_ssh = vim.env.SSH_TTY ~= nil or vim.env.SSH_CONNECTION ~= nil
-  local in_herdr = vim.env.HERDR_PANE_ID ~= nil or ancestor_process_named("herdr")
+  -- Ordered cheapest-first so the /proc ancestor walk (16 process-file
+  -- reads) only runs when no env var has already decided the answer.
+  local relevant = vim.env.TMUX ~= nil
+    or vim.env.SSH_TTY ~= nil
+    or vim.env.SSH_CONNECTION ~= nil
+    or vim.env.HERDR_PANE_ID ~= nil
+    or ancestor_process_named("herdr")
 
-  if not (in_tmux or in_ssh or in_herdr) then
+  if not relevant then
     return
   end
 

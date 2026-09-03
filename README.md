@@ -9,10 +9,14 @@ Every notable change is documented in [CHANGELOG.md](CHANGELOG.md), including wh
 ### Rust
 
 - **LazyVim `lang.rust` extra**: rustaceanvim + rust-analyzer, crates.nvim for Cargo.toml, codelldb for debugging, neotest adapter.
-- **Live-as-you-type diagnostics via [bacon-ls](https://github.com/crisidev/bacon-ls)** (`lua/plugins/bacon-ls.lua`): the native cargo backend runs clippy (`--workspace --all-targets --all-features`) with `updateOnInsert` — it mirrors the workspace into a hardlinked shadow under `target/bacon-ls-live/` and re-runs clippy on every buffer change, so diagnostics stream in while typing, before any save. rust-analyzer keeps completion, goto/references, hover, and code actions; its own checkOnSave/diagnostics are disabled to avoid duplicates.
-- **rustaceanvim tuning** (`lua/plugins/rustaceanvim.lua`): inlay hints (closure return types, elided lifetimes), fill-arguments completion snippets, full function signatures, module-grouped auto-imports.
+- **Two-tier diagnostics** for instant feedback with clippy depth:
+  - *Instant tier (~0.15–0.25s measured, warm)*: rust-analyzer's native in-memory diagnostics — type errors, unresolved names, as you type, no cargo run involved.
+  - *Depth tier (~1.2s)*: clippy via [bacon-ls](https://github.com/crisidev/bacon-ls)'s native cargo backend (`lua/plugins/bacon-ls.lua`) with `updateOnInsert` — it mirrors the workspace into a hardlinked shadow under `target/bacon-ls-live/` and re-runs clippy (`--workspace --all-features --no-deps`, 800ms debounce) on every buffer change, before any save. `checkOnSave` is deliberately **off**: with ~1s auto-save it was a second cargo pipeline racing the live one — runs cancelled each other and serialized on cargo's build-dir lock (measured 5.6s edit-to-diagnostic with both pipelines vs 0.8–0.9s single). `updateOnInsert` must stay **on**: without it bacon-ls advertises no document sync and diagnostics never refresh.
+  - The only overlap is visual: a type error can briefly show from both sources.
+- **rustaceanvim tuning** (`lua/plugins/rustaceanvim.lua`): inlay hints (closure return types, elided lifetimes), fill-arguments completion snippets, full function signatures, module-grouped auto-imports, and `cargo.targetDir = true` so rust-analyzer's build-script runs never contend for the build-dir lock with terminal `cargo run`/`cargo test`.
+- **System-level build speed** (`~/.cargo/config.toml`, outside this repo): mold linker via clang (links several times faster — every clippy/test/run cycle benefits) and `profile.dev.debug = "line-tables-only"` (backtraces kept, debuginfo cost dropped; set full debug per-project when using the debugger).
 
-Requires: `rust-analyzer` on PATH, `bacon` ≥ 3.8 (from pacman here; Mason's bacon package didn't produce a binary), `bacon-ls` (Mason).
+Requires: `rust-analyzer` on PATH, `bacon` ≥ 3.8 (from pacman here; Mason's bacon package didn't produce a binary), `bacon-ls` (Mason), `mold` + `clang` (pacman).
 
 ### 99 (AI assistant)
 
@@ -36,9 +40,16 @@ Hard-won configuration notes:
 
 ### Editor behavior
 
-- **auto-save** (`lua/plugins/auto-save.lua`): okuuva/auto-save.nvim, ~1s debounce including while typing (`TextChangedI`). Autosaves skip format-on-save via `noautocmd`, with a narrow `vim.cmd` proxy that re-sends `textDocument/didSave` so LSP save-triggered behavior survives. Manual `:w` still formats.
-- **harpoon**, and Omarchy desktop integration: live theme hot-reload, transparency, remote clipboard.
+- **auto-save** (`lua/plugins/auto-save.lua`): okuuva/auto-save.nvim, ~1s debounce including while typing (`TextChangedI`). Autosaves skip format-on-save via `noautocmd`; a `User AutoSaveWritePost` hook re-sends `textDocument/didSave` so LSP save-triggered behavior survives. Manual `:w` still formats.
+- **harpoon**, and Omarchy desktop integration: live theme hot-reload, transparency (re-applied on every `ColorScheme` change), remote clipboard (OSC52, activates only under tmux/SSH/herdr).
 - Format-on-save off globally (`vim.g.autoformat = false`), relative numbers off.
+
+### Performance choices
+
+- ~18ms startup (from 29ms): 99 + telescope + blink.compat and harpoon lazy-load on their keymaps; the herdr `/proc` ancestry walk short-circuits behind env checks.
+- lazy.nvim's periodic update checker is **off** (it re-fetched all plugin repos in the background and dragged `lazy.manage` into every startup) — update with `:Lazy sync`.
+- Remote-plugin providers (python3/ruby/perl/node) disabled — nothing uses them.
+- 99's request cache (`~/.cache/nvim/99`) is pruned of week-old files on load.
 
 ## Layout
 

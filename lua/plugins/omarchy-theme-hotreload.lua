@@ -30,7 +30,9 @@ return {
 
 						-- Clear all highlight groups before applying new theme
 						vim.cmd("highlight clear")
-						if vim.fn.exists("syntax_on") then
+						-- vim.fn.exists returns 0/1, and 0 is truthy in Lua -
+						-- must compare, or this branch always runs
+						if vim.fn.exists("syntax_on") == 1 then
 							vim.cmd("syntax reset")
 						end
 
@@ -42,8 +44,9 @@ return {
 							local plugin = require("lazy.core.config").plugins[theme_plugin_name]
 							if plugin then
 								-- Unload all lua modules from the plugin directory
+								-- (pcall: a pure-vimscript colorscheme has no lua/ dir)
 								local plugin_dir = plugin.dir .. "/lua"
-								require("lazy.core.util").walkmods(plugin_dir, function(modname)
+								pcall(require("lazy.core.util").walkmods, plugin_dir, function(modname)
 									package.loaded[modname] = nil
 									package.preload[modname] = nil
 								end)

@@ -2,6 +2,64 @@
 
 All notable changes to this config are documented here.
 
+## [1.3.0] — 2026-09-03
+
+### Fixed
+- **Slow, churning diagnostics ("checking (0%)" rows stacked for minutes).**
+  Root cause: two clippy pipelines — `checkOnSave` runs (triggered by the ~1s
+  auto-save) racing `updateOnInsert` shadow runs — cancelling each other and
+  serializing on cargo's build-dir file lock, with `--all-targets` doubling
+  every run's scope. Fixed: `checkOnSave = false` (single pipeline),
+  `--all-targets` dropped, debounce 500→800ms. Measured 5.6s → 0.8–0.9s
+  edit-to-diagnostic on a warmed project. A/B testing also proved
+  `updateOnInsert` must stay on: without it bacon-ls advertises no document
+  sync (Neovim ignores its late dynamic registration) and diagnostics never
+  refresh at all.
+- **auto-save's `vim.cmd` monkey-patch replaced with the plugin's supported
+  `User AutoSaveWritePost` event** for re-sending `textDocument/didSave`. The
+  proxy pattern-matched auto-save.nvim's internal command string (silent
+  breakage on upstream rename) and added a metatable indirection to every
+  `vim.cmd` call session-wide. Verified: didSave still reaches both LSP
+  clients, BufWritePre (format-on-save skip) still suppressed.
+- **Transparency now survives manual `:colorscheme` changes** — re-applied on
+  every `ColorScheme` event in a cleared augroup (previously startup-only;
+  only the Omarchy hot-reload path re-sourced it).
+- Theme hot-reload: `vim.fn.exists("syntax_on")` compared `== 1` (0 is truthy
+  in Lua — the branch always ran); `walkmods` wrapped in pcall for
+  pure-vimscript colorschemes.
+- 99's tmp dir (`~/.cache/nvim/99`) grew forever; files older than 7 days are
+  now pruned when 99 loads.
+
+### Changed
+- **Startup 28.7ms → ~18ms.** harpoon's `keys` function required the plugin
+  at spec-build time (force-loading it + plenary every startup — fixed to a
+  static keys table); 99 + telescope + blink.compat now lazy-load on the
+  `<leader>9*` keymaps; stock `example.lua` deleted; the remote-clipboard
+  `/proc` ancestry walk short-circuits behind env-var checks.
+- **Zero background activity**: lazy.nvim's periodic update checker off (it
+  re-fetched every plugin repo on a timer and pulled `lazy.manage` +
+  `lazy.view.commands` into each startup); python3/ruby/perl/node providers
+  disabled (nothing uses remote plugins).
+
+### Added
+- **Instant diagnostics tier**: rust-analyzer's native in-memory diagnostics
+  re-enabled alongside bacon-ls clippy — type errors while typing with no
+  cargo run, measured 155–235ms warm (real keystrokes, clean-state probes).
+  Overlap with clippy is visual only (`checkOnSave` remains off).
+- `rust-analyzer.cargo.targetDir = true`: rust-analyzer's build-script runs
+  use their own target subdir — no more build-dir lock contention with
+  terminal `cargo run`/`cargo test`.
+- clippy `--no-deps` (skip re-linting dependency crates).
+- **`~/.cargo/config.toml`** (outside this repo, documented in README): mold
+  linker via clang (verified linking via `readelf`) and
+  `profile.dev.debug = "line-tables-only"` — faster link/compile for every
+  clippy, test, and run cycle. Note: existing projects full-rebuild once
+  after the debuginfo change.
+- Verified blink.cmp is on its native Rust fuzzy matcher (the Lua fallback
+  downgrade is silent).
+- README: performance-choices section; Rust section rewritten around the
+  two-tier diagnostics design with the measured numbers.
+
 ## [1.2.0] — 2026-09-03
 
 ### Fixed

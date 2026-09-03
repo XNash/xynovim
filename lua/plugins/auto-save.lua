@@ -4,42 +4,34 @@ return {
   config = function()
     -- noautocmd (below) skips BufWritePre/BufWritePost for autosaves so
     -- conform's format-on-save doesn't fire on every debounced autosave -
-    -- but that also silently skips the LSP client's BufWritePost-triggered
-    -- `textDocument/didSave`, which rust-analyzer's on-save diagnostic
-    -- refresh (check.command = "clippy") relies on. Confirmed directly:
-    -- `noautocmd write` sends zero LSP notifications, a normal `write`
-    -- sends textDocument/didSave. Without this, diagnostics only ever
-    -- refresh on a manual :w.
+    -- but that also silently skips the LSP clients' BufWritePost-triggered
+    -- `textDocument/didSave` (confirmed directly: `noautocmd write` sends
+    -- zero LSP notifications, a normal `write` sends didSave). bacon-ls
+    -- relies on didSave to restore its shadow-workspace hardlinks, and any
+    -- save-aware LSP behavior needs it.
     --
-    -- auto-save.nvim has no save-lifecycle hooks to hang this off of, so
-    -- wrap vim.cmd narrowly: only for the exact command string it builds
-    -- internally, send didSave ourselves right after the real (synchronous)
-    -- write completes - correctly ordered, no debounce-timing races.
-    --
-    -- vim.cmd is a callable TABLE (supports both vim.cmd("...") and dot-call
-    -- forms like vim.cmd.write()/vim.cmd.help()) - replacing it outright
-    -- with a plain function breaks every dot-call use of it throughout
-    -- Neovim's runtime and every other plugin (this broke lazy.nvim's help
-    -- viewer in practice). Use a proxy that forwards dot-access to the real
-    -- vim.cmd untouched via __index, and only intercepts the plain call
-    -- form via __call.
-    local real_cmd = vim.cmd
-    ---@diagnostic disable-next-line: duplicate-set-field
-    vim.cmd = setmetatable({}, {
-      __index = real_cmd,
-      __call = function(_, command)
-        local is_autosave_write = type(command) == "string" and command:match("^noautocmd .*silent! w")
-        local result = real_cmd(command)
-        if is_autosave_write then
-          for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
-            if client:supports_method("textDocument/didSave") then
-              client:notify("textDocument/didSave", {
-                textDocument = { uri = vim.uri_from_bufnr(0) },
-              })
-            end
+    -- auto-save.nvim fires its own `User AutoSaveWritePost` autocmd AFTER
+    -- the (noautocmd) write completes, with the buffer in data.saved_buffer
+    -- - a supported hook, so send didSave from there. (This replaced an
+    -- earlier vim.cmd proxy that pattern-matched the plugin's internal
+    -- command string; the User event survives plugin refactors, the string
+    -- match didn't.)
+    local group = vim.api.nvim_create_augroup("user_autosave_didsave", { clear = true })
+    vim.api.nvim_create_autocmd("User", {
+      pattern = "AutoSaveWritePost",
+      group = group,
+      callback = function(ev)
+        local buf = ev.data and ev.data.saved_buffer
+        if not (buf and vim.api.nvim_buf_is_valid(buf)) then
+          return
+        end
+        for _, client in ipairs(vim.lsp.get_clients({ bufnr = buf })) do
+          if client:supports_method("textDocument/didSave", buf) then
+            client:notify("textDocument/didSave", {
+              textDocument = { uri = vim.uri_from_bufnr(buf) },
+            })
           end
         end
-        return result
       end,
     })
 

@@ -32,9 +32,13 @@ require("lazy").setup({
   },
   install = { colorscheme = { "tokyonight", "habamax" } },
   checker = {
-    enabled = true, -- check for plugin updates periodically
-    notify = false, -- notify on update
-  }, -- automatically check for plugin updates
+    -- OFF: the periodic checker spawns background git fetches AND pulls
+    -- lazy's whole management machinery (lazy.manage, view.commands,
+    -- runner, task, process - ~6-10ms) into every startup. Update
+    -- manually with :Lazy sync instead.
+    enabled = false,
+    notify = false,
+  },
   performance = {
     rtp = {
       -- disable some rtp plugins

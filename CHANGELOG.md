@@ -2,6 +2,44 @@
 
 All notable changes to this config are documented here.
 
+## [1.2.0] — 2026-09-03
+
+### Fixed
+- **99 responses were always empty — root cause: relative `tmp_dir` resolved
+  differently by each side of the pipeline.** 99 resolves `tmp_dir` against
+  nvim's cwd, but claude (agentic, working on project files) resolves the same
+  relative `TEMP_FILE` path against the project directory. Launching
+  `nvim Projects/foo/` from `~` meant claude faithfully wrote every answer to
+  `Projects/foo/tmp/99-*` while 99 read the empty placeholder in `~/tmp/99-*`
+  — generation worked the whole time; the completed responses were found
+  sitting unread on disk. Fixed by making `tmp_dir` absolute
+  (`~/.cache/nvim/99`), unambiguous for both sides and cwd-independent; safe
+  outside claude's cwd because ClaudeCodeProvider passes
+  `--dangerously-skip-permissions`. This supersedes an earlier same-day
+  `./tmp` attempt (never pushed), which fixed the system-temp case but still
+  broke whenever nvim's cwd wasn't the project root (the plugin README's own
+  warning).
+  Verified end-to-end twice: a real visual-mode request rewrote the buffer
+  correctly with cwd inside the project AND with cwd at `~` mimicking the
+  real launch shape.
+- **99's logger silently discarded everything**: `Logger:configure` requires
+  `type = "file"` for `path` to take effect (the plugin README example omits
+  it; anything else falls through to a void sink). With it set, requests
+  trace to `/tmp/<dirname>.99.debug` — this log was what exposed the tmp_dir
+  mismatch.
+
+### Added
+- 99 brought up to the plugin's current recommended shape
+  (`lua/plugins/ninety-nine.lua`): `display_errors`, DEBUG file logger with
+  `print_on_error`, prompt-buffer completion (`#rules` / `@files`) wired to
+  blink.cmp via new `saghen/blink.compat` dependency, and keymaps for the
+  newer API — `<leader>9v` vibe, `9o` open last interaction, `9l` view logs,
+  `9c` clear previous, `9w`/`9W` Worker search/set-work — alongside the
+  existing search/visual/stop/model/provider bindings. All mapped functions
+  verified to exist after setup.
+- README rewritten to describe this config (Rust setup, bacon-ls, 99 notes,
+  keymaps, layout) instead of the stock LazyVim starter blurb.
+
 ## [1.1.0] — 2026-09-03
 
 ### Added

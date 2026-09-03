@@ -21,11 +21,13 @@ local bacon_ls_settings = {
     -- dependency crates after their recompilation.
     extraArgs = { "--workspace", "--all-features", "--no-deps" },
     updateOnInsert = true,
-    -- Default is 500ms: every >0.5s typing pause launches a clippy run,
-    -- most of which get cancelled by the next keystroke. 800ms roughly
-    -- halves the spawn/cancel churn and CPU burn while typing, for ~0.3s
-    -- extra latency on the final result.
-    updateOnInsertDebounceMillis = 800,
+    -- Measured (multi-crate ws, warm): edit-to-clippy-diagnostic is
+    -- debounce + ~60ms, and any debounce >= the typing cadence coalesces a
+    -- burst into exactly 1 cargo spawn (500 and 800 both spawned 1 for an
+    -- 18-keystroke burst; 300 spawned 18). 500ms is the sweet spot: 0.56s
+    -- median latency, no extra churn. The old 800ms was compensating for
+    -- the upstream abort bug the patched binary fixes.
+    updateOnInsertDebounceMillis = 500,
     -- OFF deliberately: with ~1s auto-save, checkOnSave is a second run
     -- pipeline racing the updateOnInsert one - runs cancel each other and
     -- serialize on cargo's build-dir lock, stacking "checking (0%)" progress
@@ -40,6 +42,17 @@ return {
   opts = {
     servers = {
       bacon_ls = {
+        -- Locally patched build (source: ~/.local/src/bacon-ls-0.29.0-patched),
+        -- NOT the Mason 0.29.0 binary. Upstream 0.29.0 aborts the debounce
+        -- task even after its sleep has elapsed - at that point the task IS
+        -- the in-flight cargo run, so any keystroke (or auto-save's didSave,
+        -- which lands ~200ms into every burst's final run) kills the run
+        -- outright: the progress token never gets its "end" (permanently
+        -- stacked "checking..." rows) and diagnostics go stale. The patch
+        -- makes the task un-abortable once the sleep is over; in-flight runs
+        -- are superseded via CancelRunning, which closes the token properly.
+        -- Drop this cmd override once the fix lands upstream (>0.29.0).
+        cmd = { vim.fn.expand("~/.cargo/bin/bacon-ls") },
         init_options = bacon_ls_settings,
         -- Also answered to the server's workspace/configuration pull.
         settings = { bacon_ls = bacon_ls_settings },

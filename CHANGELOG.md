@@ -2,6 +2,51 @@
 
 All notable changes to this config are documented here.
 
+## [1.4.0] — 2026-09-04
+
+### Fixed
+- **bacon_ls stuck on "checking…" with stale diagnostics — root-caused to an
+  upstream bacon-ls 0.29.0 bug and fixed in a locally patched build**
+  (`~/.local/src/bacon-ls-0.29.0-patched`, installed at `~/.cargo/bin/bacon-ls`,
+  wired via `cmd` override in `lua/plugins/bacon-ls.lua`). Upstream `abort()`s
+  its debounce task even after the sleep has elapsed — at that point the task
+  IS the in-flight cargo run, so any keystroke or auto-save `didSave` killed
+  the run silently: progress tokens leaked (begin, never end → the immortal
+  stacked "checking" rows), the cargo child died mid-check, and the last run
+  of every typing burst was murdered ~200ms in by auto-save (debounce 1000ms
+  vs run start at 800ms) leaving diagnostics stale. Patch 1: generation
+  counter — a run becomes un-abortable once started; superseded runs go
+  through `CancelRunning`, which closes tokens properly.
+- **Save inside the debounce window skipped the check entirely** (e.g.
+  auto-save's immediate BufLeave/FocusLost saves right after an edit): with
+  `checkOnSave` off, `didSave` cancelled the still-pending live trigger and
+  nothing replaced it. Patch 2: only cancel when a save-run will replace it.
+- **Closing a dirty buffer left orphaned diagnostics** (computed for content
+  that no longer exists; could even crash Neovim 0.12's underline handler on
+  reopen via out-of-range lines) **and cargo replayed stale warnings** (the
+  hardlink restore moved the shadow file's mtime backwards, so cargo deemed
+  the crate fresh and replayed the dirty build's cached warnings). Patch 3:
+  on dirty close, clear the file's diagnostics, restore the shadow entry by
+  copy (fresh mtime → real re-check), and schedule a re-truthing live run.
+
+### Changed
+- `updateOnInsertDebounceMillis` 800 → **500**. Measured on a warm 3-crate
+  workspace: edit-to-clippy-diagnostic = debounce + ~60ms, and 500ms coalesces
+  an 18-keystroke burst into exactly 1 cargo spawn, same as 800 (300ms spawned
+  18 — churn). The 800ms choice was compensating for the now-fixed abort bug.
+  Median edit→diagnostic: 0.56s warm.
+
+### Verified
+- 35-check headless E2E suite (`~/.bacon-e2e/`: harness + tiny-crate,
+  3-crate-workspace, and randomized 120-op soak batteries): lint/syntax/type
+  errors appear and clear unsaved; cfg(test) exclusion documented; cross-crate
+  errors propagate (1.0s) and clear; serde derive + macro-expansion errors map
+  to the right file; Cargo.toml dep edits flow through the shadow; dirty
+  close/reopen cycles; cancellation storms and hostile didSave timings — zero
+  leaked progress tokens everywhere, bacon-ls RSS 9.5MB after 120-op soak, no
+  stray cargo processes. Full-stack integration on the real LazyVim config
+  (real auto-save): clippy tier 0.71s, error tier 0.68s.
+
 ## [1.3.0] — 2026-09-03
 
 ### Fixed

@@ -2,6 +2,39 @@
 
 All notable changes to this config are documented here.
 
+## [1.1.0] — 2026-09-03
+
+### Added
+- **Live-as-you-type Rust diagnostics via bacon-ls** — the RustRover-style
+  always-on inspections. `vim.g.lazyvim_rust_diagnostics = "bacon-ls"` in
+  `options.lua` hands the diagnostics role to bacon-ls (LazyVim's rust extra
+  disables rust-analyzer's own checkOnSave/diagnostics to avoid duplicates);
+  rust-analyzer keeps completion, goto/references, hover, inlay hints, and
+  code actions. New `lua/plugins/bacon-ls.lua` configures bacon-ls 0.29's
+  native **cargo backend**: clippy (`--workspace --all-targets
+  --all-features`) run by the server itself, with `updateOnInsert = true` —
+  it mirrors the workspace into a hardlinked shadow under
+  `target/bacon-ls-live/`, writes dirty (unsaved) buffers into it on every
+  didChange, and re-runs clippy against the shadow, so diagnostics update
+  while typing, before any save. `updateOnInsert` must live in
+  `init_options`: the server needs it at initialize-time to advertise Full
+  didChange sync. Verified headless end-to-end: a clippy-only lint
+  (`needless_return`) published on open, and a type error typed into a
+  modified, unsaved buffer surfaced as `mismatched types` with zero saves.
+- Global bacon prefs (`~/.config/bacon/prefs.toml`, outside this repo) with
+  the `[jobs.bacon-ls]` clippy job + `.bacon-locations` export — unused by
+  the cargo backend but kept as a verified-working fallback for
+  `backend = "bacon"`. bacon 3.25 installed via pacman (Mason's bacon
+  package failed to produce a binary; bacon-ls 0.29.0 installed via Mason).
+
+### Changed
+- `lua/plugins/rustaceanvim.lua`: dropped the `check` (clippy-on-save) and
+  `diagnostics` blocks — superseded by bacon-ls, and they would fight the
+  extra's disables. Inlay hints, completion, and import settings remain.
+- The `didSave` proxy in `auto-save.lua` is no longer load-bearing for
+  diagnostics (bacon-ls listens to didChange, not didSave); kept because
+  conform's format-on-save skip still relies on the same mechanism.
+
 ## [1.0.0] — 2026-09-02
 
 ### Changed

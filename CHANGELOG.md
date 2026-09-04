@@ -2,6 +2,21 @@
 
 All notable changes to this config are documented here.
 
+## [1.4.1] — 2026-09-04
+
+### Changed
+- The three bacon-ls fixes were **upstreamed as
+  [crisidev/bacon-ls#139](https://github.com/crisidev/bacon-ls/pull/139)**.
+  The local binary now builds from upstream 0.30.0 + that branch
+  (`~/.local/src/bacon-ls-upstream`) instead of the 0.29.0 fork. The
+  run-abort fix was reworked to add no struct field (the debounce task drops
+  its own handle after its sleep rather than tracking a generation counter),
+  keeping the `BackendRuntime` `large_enum_variant` size lint quiet — upstream
+  CI runs `cargo clippy --all-targets`. Behaviour is identical; the full
+  35-check E2E suite passes against the field-free build, and upstream's own
+  124 tests (incl. a new `restore_copy` test) pass. Drop the `cmd` override
+  once #139 merges.
+
 ## [1.4.0] — 2026-09-04
 
 ### Fixed

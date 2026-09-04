@@ -17,6 +17,12 @@ All notable changes to this config are documented here.
   124 tests (incl. a new `restore_copy` test) pass. Drop the `cmd` override
   once #139 merges.
 
+### Docs
+- README "Requires" corrected: `bacon-ls` comes from the local patched build
+  (`cargo install --path ~/.local/src/bacon-ls-upstream`), not Mason; the
+  `bacon` binary is not needed by the cargo backend (only the unused
+  `backend = "bacon"` fallback uses it).
+
 ## [1.4.0] — 2026-09-04
 
 ### Fixed

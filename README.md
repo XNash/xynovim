@@ -17,7 +17,7 @@ Every notable change is documented in [CHANGELOG.md](CHANGELOG.md), including wh
 - **rustaceanvim tuning** (`lua/plugins/rustaceanvim.lua`): inlay hints (closure return types, elided lifetimes), fill-arguments completion snippets, full function signatures, module-grouped auto-imports, and `cargo.targetDir = true` so rust-analyzer's build-script runs never contend for the build-dir lock with terminal `cargo run`/`cargo test`.
 - **System-level build speed** (`~/.cargo/config.toml`, outside this repo): mold linker via clang (links several times faster — every clippy/test/run cycle benefits) and `profile.dev.debug = "line-tables-only"` (backtraces kept, debuginfo cost dropped; set full debug per-project when using the debugger).
 
-Requires: `rust-analyzer` on PATH, `bacon` ≥ 3.8 (from pacman here; Mason's bacon package didn't produce a binary), `bacon-ls` (Mason), `mold` + `clang` (pacman).
+Requires: `rust-analyzer` on PATH; `bacon-ls` at `~/.cargo/bin/bacon-ls` — **the local patched build** (`cargo install --path ~/.local/src/bacon-ls-upstream`), not Mason's, which is the unpatched upstream; `mold` + `clang` (pacman). The `bacon` binary is **not** needed by the cargo backend (it runs cargo/clippy directly); it's only used by the unused `backend = "bacon"` fallback in `~/.config/bacon/prefs.toml`.
 
 ### 99 (AI assistant)
 
